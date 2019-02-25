@@ -10,6 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "humanreadable.go",
+        "extracolumns.go",
         "interface.go",
         "tabwriter.go",
     ],

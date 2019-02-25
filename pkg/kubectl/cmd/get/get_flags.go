@@ -35,6 +35,7 @@ type PrintFlags struct {
 	NamePrintFlags     *genericclioptions.NamePrintFlags
 	CustomColumnsFlags *CustomColumnsPrintFlags
 	HumanReadableFlags *HumanPrintFlags
+	ExtraColumnFlags   *ExtraColumnFlags
 	TemplateFlags      *genericclioptions.KubeTemplatePrintFlags
 
 	NoHeaders    *bool
@@ -135,6 +136,10 @@ func (f *PrintFlags) ToPrinter() (printers.ResourcePrinter, error) {
 		return p, err
 	}
 
+	if p, err := f.ExtraColumnFlags.ToPrinter(outputFormat); !genericclioptions.IsNoCompatiblePrinterError(err) {
+		return p, err
+	}
+
 	if p, err := f.HumanReadableFlags.ToPrinter(outputFormat); !genericclioptions.IsNoCompatiblePrinterError(err) {
 		return p, err
 	}
@@ -158,6 +163,7 @@ func (f *PrintFlags) AddFlags(cmd *cobra.Command) {
 	f.TemplateFlags.AddFlags(cmd)
 	f.HumanReadableFlags.AddFlags(cmd)
 	f.CustomColumnsFlags.AddFlags(cmd)
+	f.ExtraColumnFlags.AddFlags(cmd)
 
 	if f.OutputFormat != nil {
 		cmd.Flags().StringVarP(f.OutputFormat, "output", "o", *f.OutputFormat, "Output format. One of: json|yaml|wide|name|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=... See custom columns [http://kubernetes.io/docs/user-guide/kubectl-overview/#custom-columns], golang template [http://golang.org/pkg/text/template/#pkg-overview] and jsonpath template [http://kubernetes.io/docs/user-guide/jsonpath].")
@@ -183,5 +189,6 @@ func NewGetPrintFlags() *PrintFlags {
 
 		HumanReadableFlags: NewHumanPrintFlags(),
 		CustomColumnsFlags: NewCustomColumnsPrintFlags(),
+		ExtraColumnFlags:   NewExtraColumnFlags(),
 	}
 }

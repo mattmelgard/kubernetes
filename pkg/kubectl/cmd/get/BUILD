@@ -17,10 +17,11 @@ filegroup(
 go_library(
     name = "go_default_library",
     srcs = [
-        "customcolumn.go",
         "customcolumn_flags.go",
-        "get.go",
+        "customcolumn.go",
+        "extracolumn_flags.go",
         "get_flags.go",
+        "get.go",
         "humanreadable_flags.go",
         "sorter.go",
     ],
