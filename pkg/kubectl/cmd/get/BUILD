@@ -20,6 +20,7 @@ go_library(
         "customcolumn_flags.go",
         "customcolumn.go",
         "extracolumn_flags.go",
+        "extracolumn.go",
         "get_flags.go",
         "get.go",
         "humanreadable_flags.go",

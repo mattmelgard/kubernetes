@@ -50,6 +50,7 @@ type PrintOptions struct {
 	AbsoluteTimestamps bool
 	Kind               schema.GroupKind
 	ColumnLabels       []string
+	ExtraColumns       []string
 
 	SortBy string
 

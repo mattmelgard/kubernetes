@@ -36,14 +36,11 @@ func (f *ExtraColumnFlags) ToPrinter(outputFormat string) (printers.ResourcePrin
 
 	decoder := scheme.Codecs.UniversalDecoder()
 
-	extraColumns := []string{}
-	if f.ExtraColumns != nil {
-		extraColumns = *f.ExtraColumns
-	}
+	p, err := NewExtraColumnsPrinter(decoder, *f.ExtraColumns)
 
-	p := printers.NewExtraColumnsPrinter(decoder, printers.PrintOptions{
-		ExtraColumns: extraColumns,
-	})
+	if err != nil {
+		return nil, err
+	}
 
 	return p, nil
 }

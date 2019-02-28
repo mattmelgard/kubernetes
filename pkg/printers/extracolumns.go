@@ -40,7 +40,7 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, options PrintOptions) *Extr
 }
 
 // PrintObj prints the obj in a human-friendly format according to the type of the obj.
-func (h *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) error {
-	fmt.Println("Printing, yay!")
+func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) error {
+	fmt.Println("ExtraColumns:", e.options.ExtraColumns)
 	return nil
 }
