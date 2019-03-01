@@ -74,18 +74,7 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 	}
 
 	// Print default headers
-	e.PrintTableHeaders(obj.(*metav1beta1.Table), output)
-
-	// Print extra-column headers
-	objType := reflect.TypeOf(obj)
-	if !e.NoHeaders && objType != e.lastType {
-		headers := make([]string, len(e.Columns))
-		for ix := range e.Columns {
-			headers[ix] = e.Columns[ix].Header
-		}
-		fmt.Fprintln(output, strings.Join(headers, "\t"))
-		e.lastType = objType
-	}
+	e.PrintHeaders(obj, output)
 
 	includesTable := false
 	includesRuntimeObjs := false
@@ -94,8 +83,8 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 	case *metav1beta1.Table:
 		includesTable = true
 
-		// Print columns
-		if err := ParseAndPrint(t, parsers, output); err != nil {
+		// Print data columns
+		if err := PrintData(t, parsers, output); err != nil {
 			return err
 		}
 	default:
@@ -109,41 +98,70 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 	return nil
 }
 
-func (e *ExtraColumnsPrinter) PrintTableHeaders(table *metav1beta1.Table, output io.Writer) error {
+func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer) error {
 	if !e.NoHeaders {
+		headers := []string{}
+
+		// Print default headers
+		table := obj.(*metav1beta1.Table)
+
 		// avoid printing headers if we have no rows to display
 		if len(table.Rows) == 0 {
 			return nil
 		}
 
-		first := true
 		for _, column := range table.ColumnDefinitions {
 			// if !e.Wide && column.Priority != 0 {
 			if column.Priority != 0 {
 				continue
 			}
-			if first {
-				first = false
-			} else {
-				fmt.Fprint(output, "\t")
-			}
-			fmt.Fprint(output, strings.ToUpper(column.Name))
+			headers = append(headers, strings.ToUpper(column.Name))
 		}
-		fmt.Fprintln(output)
+
+		// Print extra columns headers
+		objType := reflect.TypeOf(obj)
+		if objType != e.lastType {
+			colHeaders := make([]string, len(e.Columns))
+			for ix := range e.Columns {
+				colHeaders[ix] = e.Columns[ix].Header
+			}
+			headers = append(headers, strings.Join(colHeaders, "\t"))
+			e.lastType = objType
+		}
+
+		fmt.Println("Headers:", headers)
+		fmt.Fprintln(output, strings.Join(headers, "\t"))
 	}
 
 	return nil
 }
 
-func ParseAndPrint(table *metav1beta1.Table, parsers []*jsonpath.JSONPath, output io.Writer) error {
-	columns := make([]string, len(parsers))
+func PrintData(table *metav1beta1.Table, parsers []*jsonpath.JSONPath, output io.Writer) error {
 
 	for i, row := range table.Rows {
+
+		printableRow := []string{}
+
+		// Print default columns
+		for i, cell := range row.Cells {
+			if i >= len(table.ColumnDefinitions) {
+				// https://issue.k8s.io/66379
+				// don't panic in case of bad output from the server, with more cells than column definitions
+				break
+			}
+			column := table.ColumnDefinitions[i]
+			// if !options.Wide && column.Priority != 0 {
+			if column.Priority != 0 {
+				continue
+			}
+			if cell != nil {
+				printableRow = append(printableRow, fmt.Sprintf("%v", cell))
+			}
+		}
 
 		// Print extra-columns
 		for ix := range parsers {
 			parser := parsers[ix]
-			valueStrings := []string{}
 
 			var values [][]reflect.Value
 			var err error
@@ -156,40 +174,17 @@ func ParseAndPrint(table *metav1beta1.Table, parsers []*jsonpath.JSONPath, outpu
 			}
 
 			if len(values) == 0 || len(values[0]) == 0 {
-				valueStrings = append(valueStrings, "<none>")
+				printableRow = append(printableRow, "<none>")
 			}
 			for arrIx := range values {
 				for valIx := range values[arrIx] {
-					valueStrings = append(valueStrings, fmt.Sprintf("%v", values[arrIx][valIx].Interface()))
+					printableRow = append(printableRow, fmt.Sprintf("%v", values[arrIx][valIx].Interface()))
 				}
 			}
-			columns[ix] = strings.Join(valueStrings, ",")
 		}
-		fmt.Fprintln(output, strings.Join(columns, "\t"))
 
-		// Print default columns
-		first := true
-		for i, cell := range row.Cells {
-			if i >= len(table.ColumnDefinitions) {
-				// https://issue.k8s.io/66379
-				// don't panic in case of bad output from the server, with more cells than column definitions
-				break
-			}
-			column := table.ColumnDefinitions[i]
-			// if !options.Wide && column.Priority != 0 {
-			if column.Priority != 0 {
-				continue
-			}
-			if first {
-				first = false
-			} else {
-				fmt.Fprint(output, "\t")
-			}
-			if cell != nil {
-				fmt.Fprint(output, cell)
-			}
-		}
-		fmt.Fprintln(output)
+		// Flush printable row to the writer
+		fmt.Fprintln(output, strings.Join(printableRow, "\t"))
 	}
 
 	return nil
