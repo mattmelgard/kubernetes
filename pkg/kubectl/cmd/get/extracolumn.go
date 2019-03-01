@@ -62,8 +62,12 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string) (*ExtraColum
 
 // PrintObj prints the obj in a human-friendly format according to the type of the obj.
 func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) error {
-	//fmt.Println("ExtraColumns:", e.Columns)
-	// fmt.Println("Object type:", reflect.TypeOf(obj))
+
+	switch obj.(type) {
+	case *metav1beta1.Table:
+	default:
+		return fmt.Errorf("--extra-columns printing is not supported on non-Table object lists")
+	}
 
 	parsers := make([]*jsonpath.JSONPath, len(e.Columns))
 	for ix := range e.Columns {
@@ -73,26 +77,14 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 		}
 	}
 
-	// Print default headers
-	e.PrintHeaders(obj, output)
-
-	includesTable := false
-	includesRuntimeObjs := false
-
-	switch t := obj.(type) {
-	case *metav1beta1.Table:
-		includesTable = true
-
-		// Print data columns
-		if err := PrintData(t, parsers, output); err != nil {
-			return err
-		}
-	default:
-		includesRuntimeObjs = true
+	// Print headers
+	if err := e.PrintHeaders(obj, output); err != nil {
+		return err
 	}
 
-	if includesRuntimeObjs && includesTable {
-		return fmt.Errorf("sorting is not supported on mixed Table and non-Table object lists")
+	// Print data columns
+	if err := PrintData(obj, parsers, output); err != nil {
+		return err
 	}
 
 	return nil
@@ -105,7 +97,7 @@ func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer)
 		// Print default headers
 		table := obj.(*metav1beta1.Table)
 
-		// avoid printing headers if we have no rows to display
+		// Avoid printing headers if we have no rows to display
 		if len(table.Rows) == 0 {
 			return nil
 		}
@@ -129,14 +121,14 @@ func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer)
 			e.lastType = objType
 		}
 
-		fmt.Println("Headers:", headers)
 		fmt.Fprintln(output, strings.Join(headers, "\t"))
 	}
 
 	return nil
 }
 
-func PrintData(table *metav1beta1.Table, parsers []*jsonpath.JSONPath, output io.Writer) error {
+func PrintData(obj runtime.Object, parsers []*jsonpath.JSONPath, output io.Writer) error {
+	table := obj.(*metav1beta1.Table)
 
 	for i, row := range table.Rows {
 
