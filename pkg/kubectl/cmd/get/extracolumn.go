@@ -83,7 +83,7 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 	}
 
 	// Print data columns
-	if err := PrintData(obj, parsers, output); err != nil {
+	if err := PrintData(obj, parsers, output, e.Options); err != nil {
 		return err
 	}
 
@@ -103,8 +103,7 @@ func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer)
 		}
 
 		for _, column := range table.ColumnDefinitions {
-			// if !e.Wide && column.Priority != 0 {
-			if column.Priority != 0 {
+			if !e.Options.Wide && column.Priority != 0 {
 				continue
 			}
 			headers = append(headers, strings.ToUpper(column.Name))
@@ -127,7 +126,7 @@ func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer)
 	return nil
 }
 
-func PrintData(obj runtime.Object, parsers []*jsonpath.JSONPath, output io.Writer) error {
+func PrintData(obj runtime.Object, parsers []*jsonpath.JSONPath, output io.Writer, options printers.PrintOptions) error {
 	table := obj.(*metav1beta1.Table)
 
 	for i, row := range table.Rows {
@@ -142,8 +141,7 @@ func PrintData(obj runtime.Object, parsers []*jsonpath.JSONPath, output io.Write
 				break
 			}
 			column := table.ColumnDefinitions[i]
-			// if !options.Wide && column.Priority != 0 {
-			if column.Priority != 0 {
+			if !options.Wide && column.Priority != 0 {
 				continue
 			}
 			if cell != nil {

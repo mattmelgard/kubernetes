@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/printers"
 )
@@ -42,9 +43,18 @@ type ExtraColumnFlags struct {
 	WithNamespace      bool
 }
 
+// AllowedFormats returns more customized formating options
+func (f *ExtraColumnFlags) AllowedFormats() []string {
+	return []string{"wide"}
+}
+
 // ToPrinter receives an outputFormat and returns a printer capable of
 // handling human-readable output.
 func (f *ExtraColumnFlags) ToPrinter(outputFormat string) (printers.ResourcePrinter, error) {
+
+	if len(outputFormat) > 0 && outputFormat != "wide" {
+		return nil, genericclioptions.NoCompatiblePrinterError{Options: f, AllowedFormats: f.AllowedFormats()}
+	}
 
 	decoder := scheme.Codecs.UniversalDecoder()
 
