@@ -39,7 +39,7 @@ type ExtraColumnsPrinter struct {
 
 // NewExtraColumnPrinter creates a ExtraColumnPrinter.
 // If encoder and decoder are provided, an attempt to convert unstructured types to internal types is made.
-func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string) (*ExtraColumnsPrinter, error) {
+func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, noHeaders bool) (*ExtraColumnsPrinter, error) {
 	columns := make([]Column, len(spec))
 	for ix := range spec {
 		colSpec := strings.Split(spec[ix], ":")
@@ -54,8 +54,9 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string) (*ExtraColum
 	}
 
 	printer := &ExtraColumnsPrinter{
-		Columns: columns,
-		Decoder: decoder,
+		Columns:   columns,
+		Decoder:   decoder,
+		NoHeaders: noHeaders,
 	}
 	return printer, nil
 }

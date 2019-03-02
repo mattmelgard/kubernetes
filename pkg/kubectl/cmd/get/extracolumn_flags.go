@@ -28,6 +28,7 @@ import (
 // how to handle printing based on these values.
 type ExtraColumnFlags struct {
 	ExtraColumns *[]string
+	NoHeaders    bool
 }
 
 // ToPrinter receives an outputFormat and returns a printer capable of
@@ -36,7 +37,7 @@ func (f *ExtraColumnFlags) ToPrinter(outputFormat string) (printers.ResourcePrin
 
 	decoder := scheme.Codecs.UniversalDecoder()
 
-	p, err := NewExtraColumnsPrinter(decoder, *f.ExtraColumns)
+	p, err := NewExtraColumnsPrinter(decoder, *f.ExtraColumns, f.NoHeaders)
 
 	if err != nil {
 		return nil, err
@@ -60,5 +61,6 @@ func NewExtraColumnFlags() *ExtraColumnFlags {
 
 	return &ExtraColumnFlags{
 		ExtraColumns: &extraColumns,
+		NoHeaders:    false,
 	}
 }
