@@ -19,6 +19,7 @@ package get
 import (
 	"github.com/spf13/cobra"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/printers"
 )
@@ -28,7 +29,17 @@ import (
 // how to handle printing based on these values.
 type ExtraColumnFlags struct {
 	ExtraColumns *[]string
-	NoHeaders    bool
+	ShowKind     *bool
+	ShowLabels   *bool
+	SortBy       *string
+	ColumnLabels *[]string
+
+	// get.go-specific values
+	NoHeaders bool
+
+	Kind               schema.GroupKind
+	AbsoluteTimestamps bool
+	WithNamespace      bool
 }
 
 // ToPrinter receives an outputFormat and returns a printer capable of
@@ -37,7 +48,30 @@ func (f *ExtraColumnFlags) ToPrinter(outputFormat string) (printers.ResourcePrin
 
 	decoder := scheme.Codecs.UniversalDecoder()
 
-	p, err := NewExtraColumnsPrinter(decoder, *f.ExtraColumns, f.NoHeaders)
+	showKind := false
+	if f.ShowKind != nil {
+		showKind = *f.ShowKind
+	}
+
+	showLabels := false
+	if f.ShowLabels != nil {
+		showLabels = *f.ShowLabels
+	}
+
+	columnLabels := []string{}
+	if f.ColumnLabels != nil {
+		columnLabels = *f.ColumnLabels
+	}
+
+	p, err := NewExtraColumnsPrinter(decoder, *f.ExtraColumns, printers.PrintOptions{
+		Kind:          f.Kind,
+		WithKind:      showKind,
+		NoHeaders:     f.NoHeaders,
+		Wide:          outputFormat == "wide",
+		WithNamespace: f.WithNamespace,
+		ColumnLabels:  columnLabels,
+		ShowLabels:    showLabels,
+	})
 
 	if err != nil {
 		return nil, err

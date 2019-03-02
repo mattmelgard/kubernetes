@@ -25,21 +25,20 @@ import (
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/jsonpath"
+	"k8s.io/kubernetes/pkg/printers"
 )
 
 type ExtraColumnsPrinter struct {
-	Columns   []Column
-	Encoder   runtime.Encoder
-	Decoder   runtime.Decoder
-	NoHeaders bool
-	// lastType records type of resource printed last so that we don't repeat
-	// header while printing same type of resources.
+	Columns  []Column
+	Encoder  runtime.Encoder
+	Decoder  runtime.Decoder
+	Options  printers.PrintOptions
 	lastType reflect.Type
 }
 
 // NewExtraColumnPrinter creates a ExtraColumnPrinter.
 // If encoder and decoder are provided, an attempt to convert unstructured types to internal types is made.
-func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, noHeaders bool) (*ExtraColumnsPrinter, error) {
+func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, options printers.PrintOptions) (*ExtraColumnsPrinter, error) {
 	columns := make([]Column, len(spec))
 	for ix := range spec {
 		colSpec := strings.Split(spec[ix], ":")
@@ -54,9 +53,9 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, noHeaders bo
 	}
 
 	printer := &ExtraColumnsPrinter{
-		Columns:   columns,
-		Decoder:   decoder,
-		NoHeaders: noHeaders,
+		Columns: columns,
+		Decoder: decoder,
+		Options: options,
 	}
 	return printer, nil
 }
@@ -92,7 +91,7 @@ func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) err
 }
 
 func (e *ExtraColumnsPrinter) PrintHeaders(obj runtime.Object, output io.Writer) error {
-	if !e.NoHeaders {
+	if !e.Options.NoHeaders {
 		headers := []string{}
 
 		// Print default headers
