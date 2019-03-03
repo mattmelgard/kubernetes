@@ -52,6 +52,10 @@ func (f *ExtraColumnFlags) AllowedFormats() []string {
 // handling human-readable output.
 func (f *ExtraColumnFlags) ToPrinter(outputFormat string) (printers.ResourcePrinter, error) {
 
+	if len(*f.ExtraColumns) == 0 {
+		return nil, genericclioptions.NoCompatiblePrinterError{Options: f, AllowedFormats: f.AllowedFormats()}
+	}
+
 	if len(outputFormat) > 0 && outputFormat != "wide" {
 		return nil, genericclioptions.NoCompatiblePrinterError{Options: f, AllowedFormats: f.AllowedFormats()}
 	}

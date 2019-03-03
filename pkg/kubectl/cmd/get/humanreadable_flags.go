@@ -69,6 +69,7 @@ func (f *HumanPrintFlags) AllowedFormats() []string {
 // ToPrinter receives an outputFormat and returns a printer capable of
 // handling human-readable output.
 func (f *HumanPrintFlags) ToPrinter(outputFormat string) (printers.ResourcePrinter, error) {
+
 	if len(outputFormat) > 0 && outputFormat != "wide" {
 		return nil, genericclioptions.NoCompatiblePrinterError{Options: f, AllowedFormats: f.AllowedFormats()}
 	}
