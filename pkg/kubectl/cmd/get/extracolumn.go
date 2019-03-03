@@ -36,9 +36,10 @@ type ExtraColumnsPrinter struct {
 	lastType reflect.Type
 }
 
-// NewExtraColumnPrinter creates a ExtraColumnPrinter.
+// NewExtraColumnPrinter creates a ExtraColumnsPrinter.
 // If encoder and decoder are provided, an attempt to convert unstructured types to internal types is made.
 func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, options printers.PrintOptions) (*ExtraColumnsPrinter, error) {
+	// Break up user specified extra-columns JSON paths into relaxed JSON expressions
 	columns := make([]Column, len(spec))
 	for ix := range spec {
 		colSpec := strings.Split(spec[ix], ":")
@@ -52,6 +53,7 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, options prin
 		columns[ix] = Column{Header: colSpec[0], FieldSpec: spec}
 	}
 
+	// Initialize extra-columns printer
 	printer := &ExtraColumnsPrinter{
 		Columns: columns,
 		Decoder: decoder,
@@ -63,12 +65,11 @@ func NewExtraColumnsPrinter(decoder runtime.Decoder, spec []string, options prin
 // PrintObj prints the obj in a human-friendly format according to the type of the obj.
 func (e *ExtraColumnsPrinter) PrintObj(obj runtime.Object, output io.Writer) error {
 
-	switch obj.(type) {
-	case *metav1beta1.Table:
-	default:
+	if _, ok := obj.(*metav1beta1.Table); !ok {
 		return fmt.Errorf("--extra-columns printing is not supported on non-Table object lists")
 	}
 
+	// Initialize JSON parsers
 	parsers := make([]*jsonpath.JSONPath, len(e.Columns))
 	for ix := range e.Columns {
 		parsers[ix] = jsonpath.New(fmt.Sprintf("column%d", ix)).AllowMissingKeys(true)
