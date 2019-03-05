@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/util/jsonpath"
 )
 
 type TablePrinter interface {
@@ -287,12 +288,22 @@ func (h *HumanReadablePrinter) PrintObj(obj runtime.Object, output io.Writer) er
 		defer w.Flush()
 	}
 
+	// Initialize JSON parsers
+	columns := h.options.ExtraColumns
+	parsers := make([]*jsonpath.JSONPath, len(columns))
+	for ix := range columns {
+		parsers[ix] = jsonpath.New(fmt.Sprintf("extracolumn%d", ix)).AllowMissingKeys(true)
+		if err := parsers[ix].Parse(columns[ix].FieldSpec); err != nil {
+			return err
+		}
+	}
+
 	// display tables following the rules of options
 	if table, ok := obj.(*metav1beta1.Table); ok {
 		if err := DecorateTable(table, h.options); err != nil {
 			return err
 		}
-		return PrintTable(table, output, h.options)
+		return PrintTable(table, parsers, output, h.options)
 	}
 
 	// check if the object is unstructured. If so, let's attempt to convert it to a type we can understand before
@@ -348,7 +359,7 @@ func hasCondition(conditions []metav1beta1.TableRowCondition, t metav1beta1.RowC
 // PrintTable prints a table to the provided output respecting the filtering rules for options
 // for wide columns and filtered rows. It filters out rows that are Completed. You should call
 // DecorateTable if you receive a table from a remote server before calling PrintTable.
-func PrintTable(table *metav1beta1.Table, output io.Writer, options PrintOptions) error {
+func PrintTable(table *metav1beta1.Table, parsers []*jsonpath.JSONPath, output io.Writer, options PrintOptions) error {
 	if !options.NoHeaders {
 		// avoid printing headers if we have no rows to display
 		if len(table.Rows) == 0 {
@@ -367,9 +378,15 @@ func PrintTable(table *metav1beta1.Table, output io.Writer, options PrintOptions
 			}
 			fmt.Fprint(output, strings.ToUpper(column.Name))
 		}
+
+		// Print extra columns headers
+		for ix := range options.ExtraColumns {
+			header := options.ExtraColumns[ix].Header
+			fmt.Fprint(output, "\t"+header)
+		}
 		fmt.Fprintln(output)
 	}
-	for _, row := range table.Rows {
+	for i, row := range table.Rows {
 		first := true
 		for i, cell := range row.Cells {
 			if i >= len(table.ColumnDefinitions) {
@@ -388,6 +405,29 @@ func PrintTable(table *metav1beta1.Table, output io.Writer, options PrintOptions
 			}
 			if cell != nil {
 				fmt.Fprint(output, cell)
+			}
+		}
+		// print extra columns table data
+		for ix := range parsers {
+			parser := parsers[ix]
+
+			var values [][]reflect.Value
+			var err error
+
+			// Parse the JSON values from the table
+			values, err = jsonpath.FindJSONPathResults(parser, table.Rows[i].Object.Object)
+
+			if err != nil {
+				return err
+			}
+
+			if len(values) == 0 || len(values[0]) == 0 {
+				fmt.Fprint(output, "\t"+"<none>")
+			}
+			for arrIx := range values {
+				for valIx := range values[arrIx] {
+					fmt.Fprint(output, "\t"+fmt.Sprintf("%v", values[arrIx][valIx].Interface()))
+				}
 			}
 		}
 		fmt.Fprintln(output)
